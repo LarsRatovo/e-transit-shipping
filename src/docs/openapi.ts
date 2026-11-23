@@ -57,7 +57,7 @@ export const openApiDocument = {
         operationId: "getPackage", tags: ["Packages"], summary: "Get a package", parameters: [idParameter],
         responses: { "200": packageResponse, "400": errorResponse, "404": errorResponse },
       },
-      patch: {
+      put: {
         operationId: "updatePackage", tags: ["Packages"], summary: "Update a package", parameters: [idParameter],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/PackageUpdateInput" } } } },
         responses: { "200": packageResponse, "400": errorResponse, "404": errorResponse },
@@ -89,7 +89,7 @@ export const openApiDocument = {
         operationId: "getShippingType", tags: ["Shipping Types"], summary: "Get a shipping type", parameters: [idParameter],
         responses: { "200": shippingTypeResponse, "400": errorResponse, "404": errorResponse },
       },
-      patch: {
+      put: {
         operationId: "updateShippingType", tags: ["Shipping Types"], summary: "Update a shipping type", parameters: [idParameter],
         requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/ShippingTypeUpdateInput" } } } },
         responses: { "200": shippingTypeResponse, "400": errorResponse, "404": errorResponse, "409": errorResponse },

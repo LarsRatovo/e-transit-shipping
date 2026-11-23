@@ -41,7 +41,7 @@ shippingTypeRouter.post(
 );
 shippingTypeRouter.get("/", listShippingTypes);
 shippingTypeRouter.get("/:id", idValidation, validateRequest, getShippingType);
-shippingTypeRouter.patch(
+shippingTypeRouter.put(
   "/:id",
   idValidation,
   nameValidation.optional(),

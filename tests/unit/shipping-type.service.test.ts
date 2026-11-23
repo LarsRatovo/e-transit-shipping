@@ -1,70 +1,102 @@
-import assert from "node:assert/strict";
-import { beforeEach, describe, it } from "node:test";
-import { AppError } from "../../src/middleware/app-error.js";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import type { ShippingTypeRepository } from "../../src/modules/shipping-type/shippingTypeRepository.js";
 import { ShippingTypeService } from "../../src/modules/shipping-type/shippingType.service.js";
-import type { CreateShippingTypeInput, ShippingType, UpdateShippingTypeInput } from "../../src/modules/shipping-type/shippingType.types.js";
-
-class InMemoryShippingTypeRepository implements ShippingTypeRepository {
-  records: ShippingType[] = [];
-  async create(input: CreateShippingTypeInput): Promise<ShippingType> {
-    const now = new Date();
-    const record = { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now, deletedAt: null };
-    this.records.push(record);
-    return record;
-  }
-  async findAll(): Promise<ShippingType[]> { return this.records.filter((record) => !record.deletedAt); }
-  async findById(id: string, includeDeleted = false): Promise<ShippingType | null> {
-    return this.records.find((record) => record.id === id && (includeDeleted || !record.deletedAt)) ?? null;
-  }
-  async findByName(name: string): Promise<ShippingType | null> {
-    return this.records.find((record) => record.name.toLowerCase() === name.toLowerCase()) ?? null;
-  }
-  async update(id: string, input: UpdateShippingTypeInput): Promise<ShippingType> {
-    const record = (await this.findById(id, true))!;
-    Object.assign(record, input, { updatedAt: new Date() });
-    return record;
-  }
-  async remove(id: string): Promise<void> { (await this.findById(id, true))!.deletedAt = new Date(); }
-  async restore(id: string): Promise<ShippingType> {
-    const record = (await this.findById(id, true))!;
-    record.deletedAt = null;
-    return record;
-  }
-}
+import type {
+  CreateShippingTypeInput,
+  ShippingType,
+  UpdateShippingTypeInput,
+} from "../../src/modules/shipping-type/shippingType.types.js";
 
 describe("ShippingTypeService", () => {
-  let repository: InMemoryShippingTypeRepository;
+  let repository: jest.Mocked<ShippingTypeRepository>;
   let service: ShippingTypeService;
+
+  const makeShippingType = (overrides: Partial<ShippingType> = {}): ShippingType => ({
+    id: crypto.randomUUID(),
+    name: "Parcel",
+    unitPrice: 10,
+    unit: "PIECE",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  });
+
   beforeEach(() => {
-    repository = new InMemoryShippingTypeRepository();
+    repository = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findById: jest.fn(),
+      findByName: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      restore: jest.fn(),
+    };
     service = new ShippingTypeService(repository);
   });
+
   it("creates and lists a shipping type", async () => {
-    const created = await service.create({ name: " Parcel ", unitPrice: 10.5, unit: "PIECE" });
-    assert.equal(created.name, "Parcel");
-    assert.deepEqual(await service.findAll(), [created]);
+    const input: CreateShippingTypeInput = { name: " Parcel ", unitPrice: 10.5, unit: "PIECE" };
+    const created = makeShippingType({ name: "Parcel", unitPrice: input.unitPrice, unit: input.unit });
+    repository.findByName.mockResolvedValue(null);
+    repository.create.mockResolvedValue(created);
+    repository.findAll.mockResolvedValue([created]);
+
+    await expect(service.create(input)).resolves.toEqual(created);
+    await expect(service.findAll()).resolves.toEqual([created]);
+    expect(repository.findByName).toHaveBeenCalledWith("Parcel");
+    expect(repository.create).toHaveBeenCalledWith({ ...input, name: "Parcel" });
   });
+
   it("rejects duplicate names case-insensitively", async () => {
-    await service.create({ name: "Parcel", unitPrice: 10, unit: "PIECE" });
-    await assert.rejects(service.create({ name: "parcel", unitPrice: 12, unit: "KG" }),
-      (error: unknown) => error instanceof AppError && error.code === "SHIPPING_TYPE_NAME_CONFLICT");
+    const existing = makeShippingType();
+    repository.findByName.mockResolvedValue(existing);
+
+    await expect(service.create({ name: "parcel", unitPrice: 12, unit: "KG" }))
+      .rejects.toMatchObject({ code: "SHIPPING_TYPE_NAME_CONFLICT", statusCode: 409 });
+    expect(repository.create).not.toHaveBeenCalled();
   });
+
   it("updates a shipping type", async () => {
-    const created = await service.create({ name: "Parcel", unitPrice: 10, unit: "PIECE" });
-    const updated = await service.update(created.id, { unitPrice: 15, unit: "KG" });
-    assert.equal(updated.unitPrice, 15);
-    assert.equal(updated.unit, "KG");
+    const existing = makeShippingType();
+    const input: UpdateShippingTypeInput = { unitPrice: 15, unit: "KG" };
+    const updated = makeShippingType({ ...existing, ...input });
+    repository.findById.mockResolvedValue(existing);
+    repository.update.mockResolvedValue(updated);
+
+    await expect(service.update(existing.id, input)).resolves.toEqual(updated);
+    expect(repository.update).toHaveBeenCalledWith(existing.id, input);
   });
+
   it("soft-deletes and restores a shipping type", async () => {
-    const created = await service.create({ name: "Parcel", unitPrice: 10, unit: "PIECE" });
-    await service.remove(created.id);
-    assert.deepEqual(await service.findAll(), []);
-    await service.restore(created.id);
-    assert.deepEqual(await service.findAll(), [created]);
+    const existing = makeShippingType();
+    const deleted = makeShippingType({ ...existing, deletedAt: new Date() });
+    const restored = makeShippingType({ ...existing, deletedAt: null });
+    repository.findById
+      .mockResolvedValueOnce(existing)
+      .mockResolvedValueOnce(deleted);
+    repository.findAll
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([restored]);
+    repository.remove.mockResolvedValue();
+    repository.restore.mockResolvedValue(restored);
+
+    await service.remove(existing.id);
+    await expect(service.findAll()).resolves.toEqual([]);
+    await expect(service.restore(existing.id)).resolves.toEqual(restored);
+    await expect(service.findAll()).resolves.toEqual([restored]);
+    expect(repository.remove).toHaveBeenCalledWith(existing.id);
+    expect(repository.findById).toHaveBeenLastCalledWith(existing.id, true);
+    expect(repository.restore).toHaveBeenCalledWith(existing.id);
   });
+
   it("returns a typed error for an unknown shipping type", async () => {
-    await assert.rejects(service.findById(crypto.randomUUID()),
-      (error: unknown) => error instanceof AppError && error.statusCode === 404);
+    const id = crypto.randomUUID();
+    repository.findById.mockResolvedValue(null);
+
+    await expect(service.findById(id)).rejects.toMatchObject({
+      code: "SHIPPING_TYPE_NOT_FOUND",
+      statusCode: 404,
+    });
   });
 });

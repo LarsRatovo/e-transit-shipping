@@ -1,0 +1,2 @@
+CREATE DATABASE e_transit_customer;
+CREATE DATABASE e_transit_shipping;

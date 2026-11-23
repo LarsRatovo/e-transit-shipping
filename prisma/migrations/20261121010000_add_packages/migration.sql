@@ -4,6 +4,7 @@ CREATE TABLE "packages" (
     "shipping_type_id" UUID NOT NULL,
     "measure" DECIMAL(12,3) NOT NULL,
     "price" DECIMAL(12,2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "deleted_at" TIMESTAMP(3),

@@ -1,4 +1,5 @@
 import { AppError } from "../../middleware/app-error.js";
+import { CustomerRepository } from "../customer/customer.repository.js";
 import type { ShippingTypeRepository } from "../shipping-type/shippingTypeRepository.js";
 import type { CreatePackageInput, Package, UpdatePackageInput } from "./package.types.js";
 import type { PackageRepository } from "./packageRepository.js";
@@ -9,10 +10,12 @@ export class PackageService {
   constructor(
     private readonly repository: PackageRepository,
     private readonly shippingTypes: ShippingTypeReader,
+    private readonly customerRepository : CustomerRepository
   ) {}
 
   async create(input: CreatePackageInput): Promise<Package> {
     await this.ensureShippingTypeExists(input.shippingTypeId);
+    if(await this.customerRepository.find(input.clientId) === null) throw new AppError("Customer not found",406,"INVALID_CUSTOMER")
     return this.repository.create(input);
   }
 
@@ -31,6 +34,7 @@ export class PackageService {
     if (input.shippingTypeId !== undefined) {
       await this.ensureShippingTypeExists(input.shippingTypeId);
     }
+    if(await this.customerRepository.find(input.clientId) === null) throw new AppError("Customer not found",409,"INVALID_CUSTOMER")
     return this.repository.update(id, input);
   }
 

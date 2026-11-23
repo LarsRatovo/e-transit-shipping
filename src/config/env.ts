@@ -12,4 +12,5 @@ export const env = {
   serviceName: process.env.SERVICE_NAME ?? "e-transit-service",
   databaseUrl:
     process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/e_transit_service",
+  customerServiceUrl : process.env.CUSTOMER_SERVICE_URL ?? ""
 } as const;

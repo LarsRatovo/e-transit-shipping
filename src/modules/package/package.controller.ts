@@ -3,10 +3,12 @@ import { PrismaShippingTypeRepository } from "../shipping-type/prismaShippingTyp
 import { PackageService } from "./package.service.js";
 import type { CreatePackageInput, UpdatePackageInput } from "./package.types.js";
 import { PrismaPackageRepository } from "./prismaPackage.repository.js";
+import { CustomerApiRepository } from "../customer/customerApi.repository.js";
 
 const service = new PackageService(
   new PrismaPackageRepository(),
   new PrismaShippingTypeRepository(),
+  new CustomerApiRepository()
 );
 
 function packageId(request: Parameters<RequestHandler>[0]): string {
@@ -28,12 +30,7 @@ export const getPackage: RequestHandler = async (request, response) => {
 
 export const updatePackage: RequestHandler = async (request, response) => {
   const body = request.body as UpdatePackageInput;
-  const input: UpdatePackageInput = {};
-  if (body.clientId !== undefined) input.clientId = body.clientId;
-  if (body.shippingTypeId !== undefined) input.shippingTypeId = body.shippingTypeId;
-  if (body.measure !== undefined) input.measure = body.measure;
-  if (body.price !== undefined) input.price = body.price;
-  response.json(await service.update(packageId(request), input));
+  response.json(await service.update(packageId(request), body));
 };
 
 export const deletePackage: RequestHandler = async (request, response) => {

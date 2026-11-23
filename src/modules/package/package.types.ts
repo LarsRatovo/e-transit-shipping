@@ -1,9 +1,17 @@
+export enum PackageStatus{
+  RECEIVED,
+  IN_TRANSIT,
+  ARRIVED,
+  DELIVERED_OR_COLLECTED,
+  UNKNOWN
+}
 export interface Package {
   id: string;
   clientId: string;
   shippingTypeId: string;
   measure: number;
   price: number;
+  status : PackageStatus;
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
@@ -16,4 +24,10 @@ export interface CreatePackageInput {
   price: number;
 }
 
-export type UpdatePackageInput = Partial<CreatePackageInput>;
+export interface UpdatePackageInput {
+  clientId: string;
+  shippingTypeId: string;
+  status : PackageStatus;
+  measure: number;
+  price: number;
+}
